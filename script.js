@@ -107,12 +107,14 @@ async function processImage(type) {
         let processedImageData;
         if (type === 'simple') {
             const ratio = parseFloat(document.getElementById('ratio1').value);
-            processedImageData = await simpleResize(image, ratio, (progress) => {
+            const multiply = document.getElementById('multiply1').checked;
+            processedImageData = await simpleResize(image, ratio, multiply, (progress) => {
                 progressBar.style.width = progress + '%';
             });
         } else if (type === 'advanced') {
             const ratio = parseFloat(document.getElementById('ratio2').value);
-            processedImageData = await advancedResize(image, ratio, (progress) => {
+            const multiply = document.getElementById('multiply2').checked;
+            processedImageData = await advancedResize(image, ratio, multiply, (progress) => {
                 progressBar.style.width = progress + '%';
             });
         } else if (type === 'transparent') {
@@ -130,15 +132,15 @@ async function processImage(type) {
     }
 }
 
-async function simpleResize(image, ratio, progressCallback) {
+async function simpleResize(image, ratio, multiply, progressCallback) {
     return new Promise((resolve) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
         const img = new Image();
         img.onload = function() {
-            const newWidth = Math.floor(img.width / ratio);
-            const newHeight = Math.floor(img.height / ratio);
+            const newWidth = multiply ? Math.floor(img.width * ratio) : Math.floor(img.width / ratio);
+            const newHeight = multiply ? Math.floor(img.height * ratio) : Math.floor(img.height / ratio);
             
             canvas.width = newWidth;
             canvas.height = newHeight;
@@ -158,7 +160,7 @@ async function simpleResize(image, ratio, progressCallback) {
     });
 }
 
-async function advancedResize(image, ratio, progressCallback) {
+async function advancedResize(image, ratio, multiply, progressCallback) {
     return new Promise((resolve) => {
         const sourceCanvas = document.createElement('canvas');
         const sourceCtx = sourceCanvas.getContext('2d');
@@ -172,8 +174,8 @@ async function advancedResize(image, ratio, progressCallback) {
             const sourceImageData = sourceCtx.getImageData(0, 0, img.width, img.height);
             const sourcePixels = sourceImageData.data;
             
-            const outWidth = Math.floor(img.width / ratio);
-            const outHeight = Math.floor(img.height / ratio);
+            const outWidth = multiply ? Math.floor(img.width * ratio) : Math.floor(img.width / ratio);
+            const outHeight = multiply ? Math.floor(img.height * ratio) : Math.floor(img.height / ratio);
             
             const outputCanvas = document.createElement('canvas');
             const outputCtx = outputCanvas.getContext('2d');
@@ -184,12 +186,24 @@ async function advancedResize(image, ratio, progressCallback) {
             const outputPixels = outputImageData.data;
             
             for (let outY = 0; outY < outHeight; outY++) {
-                const yStart = Math.floor(outY * ratio);
-                const yEnd = Math.min(Math.ceil((outY + 1) * ratio), img.height);
+                let yStart, yEnd;
+                if (multiply) {
+                    yStart = Math.floor(outY / ratio);
+                    yEnd = Math.min(Math.ceil((outY + 1) / ratio), img.height);
+                } else {
+                    yStart = Math.floor(outY * ratio);
+                    yEnd = Math.min(Math.ceil((outY + 1) * ratio), img.height);
+                }
                 
                 for (let outX = 0; outX < outWidth; outX++) {
-                    const xStart = Math.floor(outX * ratio);
-                    const xEnd = Math.min(Math.ceil((outX + 1) * ratio), img.width);
+                    let xStart, xEnd;
+                    if (multiply) {
+                        xStart = Math.floor(outX / ratio);
+                        xEnd = Math.min(Math.ceil((outX + 1) / ratio), img.width);
+                    } else {
+                        xStart = Math.floor(outX * ratio);
+                        xEnd = Math.min(Math.ceil((outX + 1) * ratio), img.width);
+                    }
                     
                     const colorCount = {};
                     
@@ -309,13 +323,6 @@ function displayResults(originalImage, processedImage, type) {
                 <canvas id="processedCanvas${progressNum}" class="processed-canvas"></canvas>
             </div>
             <div class="canvas-controls">
-                <button class="btn btn-secondary" onclick="resetCanvas('${progressNum}')">⏹️ Reset</button>
-                <div class="loop-speed">
-                    <label>Speed:</label>
-                    <input type="range" id="loopSpeed${progressNum}" min="50" max="2000" value="1000" 
-                           oninput="updateLoopSpeed('${progressNum}', this.value)">
-                    <span id="speedValue${progressNum}">1000ms</span>
-                </div>
                 <div class="zoom-controls">
                     <button class="btn btn-secondary" onclick="zoomIn('${progressNum}')">🔍+ Zoom In</button>
                     <button class="btn btn-secondary" onclick="zoomOut('${progressNum}')">🔍- Zoom Out</button>
@@ -339,8 +346,8 @@ function displayResults(originalImage, processedImage, type) {
     initializeProcessedCanvas(progressNum, originalImage, processedImage, isTransparent);
 }
 
-// Canvas animation state
-let canvasAnimations = {};
+// Canvas state
+let canvasStates = {};
 
 function initializeProcessedCanvas(progressNum, originalImage, processedImage, isTransparent) {
     const canvas = document.getElementById(`processedCanvas${progressNum}`);
@@ -356,16 +363,11 @@ function initializeProcessedCanvas(progressNum, originalImage, processedImage, i
     
     originalImg.onload = function() {
         processedImg.onload = function() {
-            // Store animation data
-            canvasAnimations[progressNum] = {
+            // Store canvas data
+            canvasStates[progressNum] = {
                 canvas: canvas,
                 ctx: ctx,
-                originalImg: originalImg,
                 processedImg: processedImg,
-                isLooping: false,
-                intervalId: null,
-                speed: 1000,
-                showingOriginal: false,
                 zoom: 1,
                 panX: 0,
                 panY: 0,
@@ -375,7 +377,7 @@ function initializeProcessedCanvas(progressNum, originalImage, processedImage, i
             };
             
             // Draw initial processed image
-            drawImageWithZoom(canvasAnimations[progressNum]);
+            drawImageWithZoom(canvasStates[progressNum]);
             
             // Add mouse event listeners
             setupCanvasMouseEvents(progressNum);
@@ -386,26 +388,25 @@ function initializeProcessedCanvas(progressNum, originalImage, processedImage, i
 }
 
 function drawImageWithZoom(animation) {
-    const { ctx, canvas, zoom, panX, panY, showingOriginal, originalImg, processedImg } = animation;
-    const img = showingOriginal ? originalImg : processedImg;
+    const { ctx, canvas, zoom, panX, panY, processedImg } = animation;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
     
     // Calculate scaled dimensions
-    const scaledWidth = img.width * zoom;
-    const scaledHeight = img.height * zoom;
+    const scaledWidth = processedImg.width * zoom;
+    const scaledHeight = processedImg.height * zoom;
     
     // Calculate centered position with pan offset
     const x = (canvas.width - scaledWidth) / 2 + panX;
     const y = (canvas.height - scaledHeight) / 2 + panY;
     
-    ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+    ctx.drawImage(processedImg, x, y, scaledWidth, scaledHeight);
 }
 
 function setupCanvasMouseEvents(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    const canvas = animation.canvas;
+    const canvasState = canvasStates[progressNum];
+    const canvas = canvasState.canvas;
     
     // Mouse wheel zoom
     canvas.addEventListener('wheel', (e) => {
@@ -415,144 +416,92 @@ function setupCanvasMouseEvents(progressNum) {
         const mouseY = e.clientY - rect.top;
         
         const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        const oldZoom = animation.zoom;
-        animation.zoom = Math.max(0.1, Math.min(10, animation.zoom * zoomFactor));
+        const oldZoom = canvasState.zoom;
+        canvasState.zoom = Math.max(0.1, Math.min(10, canvasState.zoom * zoomFactor));
         
         // Adjust pan to zoom towards mouse position
-        const zoomChange = animation.zoom / oldZoom;
-        animation.panX = mouseX - (mouseX - animation.panX) * zoomChange;
-        animation.panY = mouseY - (mouseY - animation.panY) * zoomChange;
+        const zoomChange = canvasState.zoom / oldZoom;
+        canvasState.panX = mouseX - (mouseX - canvasState.panX) * zoomChange;
+        canvasState.panY = mouseY - (mouseY - canvasState.panY) * zoomChange;
         
-        drawImageWithZoom(animation);
+        drawImageWithZoom(canvasState);
         updateZoomDisplay(progressNum);
     });
     
     // Mouse drag to pan
     canvas.addEventListener('mousedown', (e) => {
-        animation.isDragging = true;
-        animation.lastMouseX = e.clientX;
-        animation.lastMouseY = e.clientY;
+        canvasState.isDragging = true;
+        canvasState.lastMouseX = e.clientX;
+        canvasState.lastMouseY = e.clientY;
         canvas.style.cursor = 'grabbing';
     });
     
     canvas.addEventListener('mousemove', (e) => {
-        if (animation.isDragging) {
-            const deltaX = e.clientX - animation.lastMouseX;
-            const deltaY = e.clientY - animation.lastMouseY;
+        if (canvasState.isDragging) {
+            const deltaX = e.clientX - canvasState.lastMouseX;
+            const deltaY = e.clientY - canvasState.lastMouseY;
             
-            animation.panX += deltaX;
-            animation.panY += deltaY;
+            canvasState.panX += deltaX;
+            canvasState.panY += deltaY;
             
-            animation.lastMouseX = e.clientX;
-            animation.lastMouseY = e.clientY;
+            canvasState.lastMouseX = e.clientX;
+            canvasState.lastMouseY = e.clientY;
             
-            drawImageWithZoom(animation);
+            drawImageWithZoom(canvasState);
         }
     });
     
     canvas.addEventListener('mouseup', () => {
-        animation.isDragging = false;
-        canvas.style.cursor = animation.zoom > 1 ? 'grab' : 'default';
+        canvasState.isDragging = false;
+        canvas.style.cursor = canvasState.zoom > 1 ? 'grab' : 'default';
     });
     
     canvas.addEventListener('mouseleave', () => {
-        animation.isDragging = false;
+        canvasState.isDragging = false;
         canvas.style.cursor = 'default';
     });
     
     // Set initial cursor
-    canvas.style.cursor = animation.zoom > 1 ? 'grab' : 'default';
+    canvas.style.cursor = canvasState.zoom > 1 ? 'grab' : 'default';
 }
 
-function toggleLoop(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
-    
-    if (animation.isLooping) {
-        // Stop looping
-        clearInterval(animation.intervalId);
-        animation.isLooping = false;
-        // Show processed image
-        animation.showingOriginal = false;
-        drawImageWithZoom(animation);
-    } else {
-        // Start looping
-        animation.isLooping = true;
-        animation.intervalId = setInterval(() => {
-            animation.showingOriginal = !animation.showingOriginal;
-            drawImageWithZoom(animation);
-        }, animation.speed);
-    }
-}
-
-function resetCanvas(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
-    
-    // Stop any animation
-    if (animation.isLooping) {
-        clearInterval(animation.intervalId);
-        animation.isLooping = false;
-    }
-    
-    // Reset to processed image
-    animation.showingOriginal = false;
-    drawImageWithZoom(animation);
-}
-
-function updateLoopSpeed(progressNum, speed) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
-    
-    animation.speed = parseInt(speed);
-    document.getElementById(`speedValue${progressNum}`).textContent = speed + 'ms';
-    
-    // Restart loop with new speed if currently looping
-    if (animation.isLooping) {
-        clearInterval(animation.intervalId);
-        animation.intervalId = setInterval(() => {
-            animation.showingOriginal = !animation.showingOriginal;
-            drawImageWithZoom(animation);
-        }, animation.speed);
-    }
-}
 
 function zoomIn(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
+    const canvasState = canvasStates[progressNum];
+    if (!canvasState) return;
     
-    animation.zoom = Math.min(10, animation.zoom * 1.2);
-    animation.canvas.style.cursor = animation.zoom > 1 ? 'grab' : 'default';
-    drawImageWithZoom(animation);
+    canvasState.zoom = Math.min(10, canvasState.zoom * 1.2);
+    canvasState.canvas.style.cursor = canvasState.zoom > 1 ? 'grab' : 'default';
+    drawImageWithZoom(canvasState);
     updateZoomDisplay(progressNum);
 }
 
 function zoomOut(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
+    const canvasState = canvasStates[progressNum];
+    if (!canvasState) return;
     
-    animation.zoom = Math.max(0.1, animation.zoom / 1.2);
-    animation.canvas.style.cursor = animation.zoom > 1 ? 'grab' : 'default';
-    drawImageWithZoom(animation);
+    canvasState.zoom = Math.max(0.1, canvasState.zoom / 1.2);
+    canvasState.canvas.style.cursor = canvasState.zoom > 1 ? 'grab' : 'default';
+    drawImageWithZoom(canvasState);
     updateZoomDisplay(progressNum);
 }
 
 function resetZoom(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
+    const canvasState = canvasStates[progressNum];
+    if (!canvasState) return;
     
-    animation.zoom = 1;
-    animation.panX = 0;
-    animation.panY = 0;
-    animation.canvas.style.cursor = 'default';
-    drawImageWithZoom(animation);
+    canvasState.zoom = 1;
+    canvasState.panX = 0;
+    canvasState.panY = 0;
+    canvasState.canvas.style.cursor = 'default';
+    drawImageWithZoom(canvasState);
     updateZoomDisplay(progressNum);
 }
 
 function updateZoomDisplay(progressNum) {
-    const animation = canvasAnimations[progressNum];
-    if (!animation) return;
+    const canvasState = canvasStates[progressNum];
+    if (!canvasState) return;
     
-    const zoomPercent = Math.round(animation.zoom * 100);
+    const zoomPercent = Math.round(canvasState.zoom * 100);
     document.getElementById(`zoomLevel${progressNum}`).textContent = `${zoomPercent}%`;
 }

@@ -207,6 +207,66 @@ input[type="number"]:focus, input[type="range"]:focus {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.95rem;
+    position: relative;
+    padding-left: 35px;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 20px;
+    width: 20px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.checkbox-label:hover .checkmark {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.checkbox-label input[type="checkbox"]:checked ~ .checkmark {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: #667eea;
+}
+
+.checkmark::after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-label input[type="checkbox"]:checked ~ .checkmark::after {
+    display: block;
+    left: 6px;
+    top: 2px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
 input[type="range"] {
     width: 150px;
     height: 6px;
@@ -454,12 +514,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 .canvas-controls {
     display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
     align-items: center;
     justify-content: center;
     margin: 20px 0;
-    padding: 20px;
+    padding: 15px;
     background: linear-gradient(135deg, #f7fafc, #edf2f7);
     border-radius: 12px;
     border: 1px solid rgba(0,0,0,0.05);
@@ -486,55 +544,6 @@ input[type="range"]::-webkit-slider-thumb {
     background: linear-gradient(135deg, #4a5568, #2d3748);
 }
 
-.loop-speed {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: white;
-    padding: 12px 18px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-}
-
-.loop-speed:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-}
-
-.loop-speed label {
-    font-weight: 600;
-    color: #2d3748;
-    font-size: 0.9rem;
-    min-width: 50px;
-}
-
-.loop-speed input[type="range"] {
-    width: 120px;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    appearance: none;
-    margin: 0;
-}
-
-.loop-speed input[type="range"]::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
-.loop-speed span {
-    font-weight: 600;
-    color: #667eea;
-    min-width: 60px;
-    text-align: center;
-    font-size: 0.85rem;
-}
 
 .zoom-controls {
     display: flex;
@@ -574,18 +583,202 @@ input[type="range"]::-webkit-slider-thumb {
         gap: 12px;
     }
     
-    .loop-speed {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
     .zoom-controls {
         width: 100%;
-        justify-content: space-between;
+        justify-content: center;
         flex-wrap: wrap;
     }
     
     .processed-canvas {
         max-height: 300px;
+    }
+}
+
+@media (max-width: 400px) {
+    body {
+        padding: 10px;
+    }
+    
+    .header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .tab-button {
+        padding: 12px 8px;
+        font-size: 12px;
+        text-align: center;
+    }
+    
+    .tab-content {
+        padding: 20px 15px;
+    }
+    
+    .section-title {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+    }
+    
+    .upload-area {
+        padding: 30px 15px;
+        margin-bottom: 20px;
+    }
+    
+    .upload-text {
+        font-size: 1rem;
+    }
+    
+    .controls {
+        padding: 15px;
+        gap: 15px;
+    }
+    
+    .control-group {
+        padding: 10px 15px;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .checkbox-label {
+        font-size: 0.9rem;
+        justify-content: center;
+    }
+    
+    .btn {
+        padding: 10px 15px;
+        font-size: 12px;
+        width: 100%;
+        max-width: 200px;
+    }
+    
+    .btn-secondary {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+    
+    .canvas-controls {
+        padding: 15px;
+        gap: 10px;
+    }
+    
+    
+    .zoom-controls {
+        padding: 10px 12px;
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .zoom-controls .btn-secondary {
+        flex: 1;
+        min-width: 60px;
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    
+    .zoom-level {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        min-width: 45px;
+    }
+    
+    .processed-canvas {
+        max-height: 250px;
+        width: 100%;
+    }
+    
+    .image-preview {
+        gap: 20px;
+    }
+    
+    .preview-container {
+        padding: 15px;
+    }
+    
+    .preview-container h3 {
+        font-size: 1rem;
+        margin-bottom: 15px;
+    }
+    
+    .image-info {
+        font-size: 12px;
+        padding: 10px;
+    }
+    
+    .download-link {
+        padding: 10px 20px;
+        font-size: 12px;
+    }
+    
+    .preview-note {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    
+    .threshold-display {
+        min-width: 35px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 320px) {
+    .header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .tab-button {
+        padding: 10px 4px;
+        font-size: 10px;
+        letter-spacing: 0;
+    }
+    
+    .upload-area {
+        padding: 20px 10px;
+    }
+    
+    .upload-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    
+    .upload-text {
+        font-size: 0.9rem;
+    }
+    
+    .controls {
+        padding: 10px;
+    }
+    
+    .btn {
+        font-size: 11px;
+        padding: 8px 12px;
+    }
+    
+    .checkbox-label {
+        font-size: 0.8rem;
+    }
+    
+    .zoom-controls .btn-secondary {
+        font-size: 9px;
+        padding: 5px 6px;
+        min-width: 50px;
+    }
+    
+    .zoom-level {
+        font-size: 0.75rem;
+        padding: 5px 8px;
+        min-width: 40px;
+    }
+    
+    
+    .processed-canvas {
+        max-height: 200px;
+    }
+    
+    .image-container {
+        margin-bottom: 10px;
+    }
+    
+    .preview-container img {
+        max-height: 200px;
     }
 }
